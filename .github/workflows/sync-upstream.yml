@@ -1,0 +1,42 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 每天 UTC 23:00 触发，即北京时间次日早上 07:00
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync_latest_from_upstream:
+    runs-on: ubuntu-latest
+    name: Sync latest commits from upstream
+
+    steps:
+      # Step 1: 检出 fork 的 main 分支
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # Step 2: 从上游拉取并合并到 fork 的 main 分支
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
+        with:
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_repo: newsnext/newsnow
+          upstream_sync_branch: main
+
+      # Step 3: 根据是否有新提交输出日志
+      - name: New commits found
+        if: steps.sync.outputs.has_new_commits == 'true'
+        run: echo "New commits were found to sync."
+
+      - name: No new commits
+        if: steps.sync.outputs.has_new_commits == 'false'
+        run: echo "There were no new commits."
